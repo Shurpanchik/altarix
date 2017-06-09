@@ -20,10 +20,15 @@ namespace Tutorial1
 				Thread worker1 = new Thread(worker.Start);
 				Thread worker2 = new Thread(worker.Finish);
 
+                // блокируем поток main  пока не будут выполнены задачи в потоках
 				worker1.Start();
+                worker1.Join();
+                //к этому моменту первый поток завершится
 				worker2.Start();
+                // далее будет соревнование между main и worker2, поэтому ждем завершения worker2
+                worker2.Join();
 
-				Console.WriteLine(worker.Condition);
+                Console.WriteLine(worker.Condition);
 			}
 		}
 
