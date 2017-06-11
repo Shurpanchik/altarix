@@ -47,10 +47,10 @@ namespace SharedList
         public static class ListManager
         {
             public static bool StopTrigger = false;
-            public static ConcurrentDictionary<int, Detail> SharedList;
+            public static ConcurrentQueue<Detail> SharedList;
             static ListManager()
             {
-                SharedList = new ConcurrentDictionary<int, Detail>();
+                SharedList = new ConcurrentQueue<Detail>();
             }
 
             public static string GetInfo()
@@ -63,7 +63,7 @@ namespace SharedList
 
                 foreach (var element in SharedList)
                 {
-                    switch (element.Value.Status)
+                    switch (element.Status)
                     {
                         case 0:
                             {
@@ -101,57 +101,24 @@ namespace SharedList
             }
 
             public static int UpdateDetail(int[] requiredConditions)
-            {
-
-                for (int i = 0; i < SharedList.Count; i++)
+            { 
+                while (true)
                 {
-                    while (true)
-                    {
-                        int current = SharedList[i].Status;
-                        if (requiredConditions.Contains(current))
+                    Detail detail = new Detail() { Status=-1};
+                    while (!SharedList.TryDequeue(out detail))
+                    { }
+                        Console.WriteLine("detail.Status " + detail.Status + "detail.Index" + detail.Index);
+                        if (detail.Status == 2)
                         {
-                            int nextVal = current + 1;
-                            // пытаемся изменить статус детальки
-                            // если удачно, то вернем индекс измененной детали
-                            // если неудачно, то пробуем еще раз
-                            bool resUpdate = UpdateDetail(i, current, nextVal);
-                            if (resUpdate)
-                            {
-                                return i;
-                            }
+                            SharedList.Enqueue(detail);
+                            // return -1;
                         }
                         else
                         {
-                            break;
+                            detail.Status++;
+                            SharedList.Enqueue(detail);
+                            return detail.Status;
                         }
-                    }
-                }
-                return -1;
-            }
-
-            public static bool UpdateDetail(int i, int current, int nextVal)
-            {
-                //https://habrahabr.ru/post/245727/
-                try
-                {
-                    SharedList.AddOrUpdate(i, SharedList[i],
-                      (key, existingVal) =>
-                      {
-                          if (existingVal.Status == current)
-                          {
-                              existingVal.Status = nextVal;
-                              return existingVal;
-                          }
-                          else
-                          {
-                              throw new ArgumentException("...");
-                          }
-                      });
-                    return true;
-                }
-                catch
-                {
-                    return false;
                 }
             }
         }
@@ -162,7 +129,8 @@ namespace SharedList
             public override void DoWork()
             {
                 if (ListManager.SharedList.Count < 150)
-                    ListManager.SharedList.GetOrAdd(ListManager.SharedList.Count, new Detail { Status = 0 });
+                    ListManager.SharedList.Enqueue(
+                        new Detail { Status = 0, Index = ListManager.SharedList.Count });
             }
         }
 
@@ -197,7 +165,9 @@ namespace SharedList
         public class Detail
         {
             private int status;
+            private int index;
             public int Status { get => status; set => status = value; }
+            public int Index { get => index; set => index = value; }
 
             public bool CompareAndSet(int nextStatus, int comparand)
             {
