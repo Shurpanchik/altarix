@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Tutorial1
 {
@@ -17,16 +18,16 @@ namespace Tutorial1
             while (true)
             {
                 Console.ReadLine();
-                Thread worker1 = new Thread(worker.Start);
-                Thread worker2 = new Thread(worker.Finish);
+                Task worker1 = new Task(worker.Start);
+                Task worker2 = new Task(worker.Finish);
 
                 // блокируем поток main  пока не будут выполнены задачи в потоках
                 worker1.Start();
-                worker1.Join();
+                worker1.Wait();
                 //к этому моменту первый поток завершится
                 worker2.Start();
                 // далее будет соревнование между main и worker2, поэтому ждем завершения worker2
-                worker2.Join();
+                worker2.Wait();
 
                 Console.WriteLine(worker.Condition);
             }
