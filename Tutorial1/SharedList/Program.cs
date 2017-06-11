@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -46,10 +47,10 @@ namespace SharedList
         public static class ListManager
         {
             public static bool StopTrigger = false;
-            public static List<Detail> SharedList;
+            public static ConcurrentDictionary<int, Detail> SharedList;
             static ListManager()
             {
-                SharedList = new List<Detail>();
+                SharedList = new ConcurrentDictionary<int, Detail>();
             }
 
             public static string GetInfo()
@@ -62,7 +63,7 @@ namespace SharedList
 
                 foreach (var element in SharedList)
                 {
-                    switch (element.Status)
+                    switch (element.Value.Status)
                     {
                         case 0:
                             {
@@ -113,7 +114,8 @@ namespace SharedList
                             // пытаемся изменить статус детальки
                             // если удачно, то вернем индекс измененной детали
                             // если неудачно, то пробуем еще раз
-                            if (SharedList[i].CompareAndSet(nextVal, current))
+                            bool resUpdate = UpdateDetail(i, current, nextVal);
+                            if (resUpdate)
                             {
                                 return i;
                             }
@@ -124,8 +126,32 @@ namespace SharedList
                         }
                     }
                 }
-
                 return -1;
+            }
+
+            public static bool UpdateDetail(int i, int current, int nextVal)
+            {
+                try
+                {
+                    SharedList.AddOrUpdate(i, SharedList[i],
+                      (key, existingVal) =>
+                      {
+                          if (existingVal.Status == current)
+                          {
+                              existingVal.Status = nextVal;
+                              return existingVal;
+                          }
+                          else
+                          {
+                              throw new ArgumentException("...");
+                          }
+                      });
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
             }
         }
 
@@ -135,7 +161,7 @@ namespace SharedList
             public override void DoWork()
             {
                 if (ListManager.SharedList.Count < 150)
-                    ListManager.SharedList.Add(new Detail {Status=0 });
+                    ListManager.SharedList.GetOrAdd(ListManager.SharedList.Count, new Detail { Status = 0 });
             }
         }
 
@@ -148,7 +174,7 @@ namespace SharedList
 
                 if (index >= 0)
                 {
-                   // ListManager.SharedList[index]++;
+                    // ListManager.SharedList[index]++;
                     Thread.Sleep(250);
                 }
             }
@@ -167,14 +193,14 @@ namespace SharedList
             public abstract void DoWork();
         }
 
-      public  class Detail
+        public class Detail
         {
             private int status;
             public int Status { get => status; set => status = value; }
 
             public bool CompareAndSet(int nextStatus, int comparand)
             {
-              return Interlocked.CompareExchange(ref this.status, nextStatus, comparand)== comparand;
+                return Interlocked.CompareExchange(ref this.status, nextStatus, comparand) == comparand;
             }
         }
     }
