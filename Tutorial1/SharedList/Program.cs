@@ -107,10 +107,9 @@ namespace SharedList
                     Detail detail = new Detail() { Status=-1};
                     while (!SharedList.TryDequeue(out detail))
                     { }
-                        Console.WriteLine("detail.Status " + detail.Status + "detail.Index" + detail.Index);
                         if (detail.Status == 2)
                         {
-                            SharedList.Enqueue(detail);
+                            //SharedList.Enqueue(detail);
                             // return -1;
                         }
                         else
