@@ -131,6 +131,7 @@ namespace SharedList
 
             public static bool UpdateDetail(int i, int current, int nextVal)
             {
+                //https://habrahabr.ru/post/245727/
                 try
                 {
                     SharedList.AddOrUpdate(i, SharedList[i],
